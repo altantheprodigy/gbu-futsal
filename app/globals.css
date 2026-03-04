@@ -11,6 +11,14 @@
   --foreground: #171717;
 }
 
+/* Force light mode regardless of preference */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #ffffff;
+    --foreground: #171717;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

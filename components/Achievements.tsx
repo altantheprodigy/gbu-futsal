@@ -84,11 +84,11 @@ export default function Achievements() {
               key={item.id}
               className="group bg-white rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border-b-4 border-transparent hover:border-secondary flex flex-col relative overflow-hidden"
             >
-              <div className="h-48 w-full relative overflow-hidden bg-slate-200">
+              <div className="h-64 w-full relative overflow-hidden bg-slate-200">
                 <img
                   src={item.image}
                   alt={item.title}
-                  className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-700"
+                  className="object-contain w-full h-full transform group-hover:scale-105 transition-transform duration-700 bg-white"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                 <div className="absolute bottom-4 left-4 flex items-center gap-3">

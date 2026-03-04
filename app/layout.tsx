@@ -19,7 +19,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html
+      lang="en"
+      className="scroll-smooth light"
+      style={{ colorScheme: "light" }}
+    >
       <body className={`${poppins.variable} antialiased`}>{children}</body>
     </html>
   );

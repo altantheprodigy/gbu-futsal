@@ -14,7 +14,7 @@ export default function Hero() {
           <div className="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
           <div className="relative h-32 w-32 md:h-40 md:w-40 bg-white rounded-full flex flex-col items-center justify-center border-4 border-primary shadow-2xl overflow-hidden p-2">
             <img
-              src="/gbu.png"
+              src="/logo.png"
               alt="GBU Futsal Logo"
               className="object-contain w-full h-full transform group-hover:scale-110 transition-transform duration-300"
             />
