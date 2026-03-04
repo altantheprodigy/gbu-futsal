@@ -90,7 +90,7 @@ export default function RamadhanCup() {
                 </div>
 
                 {/* Content Panel */}
-                <div className="ml-8 md:ml-0 md:w-1/2 w-full group">
+                <div className="ml-8 md:ml-0 md:w-1/2 w-[calc(100%-2.5rem)] group pr-4 md:pr-0">
                   <div
                     className={`bg-slate-50 p-6 md:p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 hover:border-primary/20 max-w-lg relative overflow-hidden ${index % 2 === 0 ? "md:ml-auto md:text-right" : "md:mr-auto"}`}
                   >
