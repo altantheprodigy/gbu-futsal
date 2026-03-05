@@ -1,6 +1,7 @@
 import Hero from "@/components/Hero";
 import Achievements from "@/components/Achievements";
 import RamadhanCup from "@/components/RamadhanCup";
+import LigaSelasaSpin from "@/components/LigaSelasaSpin";
 import StaffGrid from "@/components/StaffGrid";
 
 export default function Home() {
@@ -9,6 +10,7 @@ export default function Home() {
       <Hero />
       <Achievements />
       <RamadhanCup />
+      <LigaSelasaSpin />
       <StaffGrid />
 
       {/* Simple Footer */}
