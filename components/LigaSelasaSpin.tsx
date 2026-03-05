@@ -8,7 +8,7 @@ const TEAM_NAMES = [
   "Tsubasa",
   "Power Rangers",
   "Doraemon",
-  "Upin Ipin",
+  "Jumbo",
 ];
 
 const CATEGORIES = [
@@ -314,110 +314,118 @@ export default function LigaSelasaSpin() {
 
         {/* Teams Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {TEAM_NAMES.map((teamName, idx) => (
-            <div
-              key={teamName}
-              className={`bg-white rounded-3xl p-8 shadow-lg border-2 transition-all duration-500 ease-out flex flex-col ${
-                currentTeamIndex === idx
-                  ? "border-secondary shadow-secondary/20 shadow-[-5px_-5px_20px_rgba(0,0,0,0.05),_5px_5px_20px_rgba(250,204,21,0.2)] scale-[1.03] ring-4 ring-secondary/20 z-10"
-                  : teams[idx].length === CATEGORIES.length
-                    ? "border-primary/30 bg-primary/[0.02]"
-                    : "border-slate-100 hover:border-slate-200"
-              }`}
-            >
-              <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-slate-100">
-                <h4 className="text-2xl font-black text-slate-800 tracking-tight">
-                  {teamName}
-                </h4>
-                <div
-                  className={`px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 ${
-                    teams[idx].length === CATEGORIES.length
-                      ? "bg-primary/20 text-primary-dark"
-                      : currentTeamIndex === idx
-                        ? "bg-secondary/20 text-slate-800"
-                        : "bg-slate-100 text-slate-500"
-                  }`}
-                >
-                  {teams[idx].length === CATEGORIES.length && (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4 text-primary font-bold"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                  )}
-                  <span>
-                    {teams[idx].length} / {CATEGORIES.length}
-                  </span>
+          {TEAM_NAMES.map((name, idx) => ({ teamName: name, idx }))
+            .sort((a, b) => {
+              if (a.idx === currentTeamIndex) return -1;
+              if (b.idx === currentTeamIndex) return 1;
+              return a.idx - b.idx;
+            })
+            .map(({ teamName, idx }) => (
+              <div
+                key={teamName}
+                className={`bg-white rounded-3xl p-8 shadow-lg border-2 transition-all duration-500 ease-out flex flex-col ${
+                  currentTeamIndex === idx
+                    ? "border-secondary shadow-secondary/20 shadow-[-5px_-5px_20px_rgba(0,0,0,0.05),_5px_5px_20px_rgba(250,204,21,0.2)] scale-[1.03] ring-4 ring-secondary/20 z-10"
+                    : teams[idx].length === CATEGORIES.length
+                      ? "border-primary/30 bg-primary/[0.02]"
+                      : "border-slate-100 hover:border-slate-200"
+                }`}
+              >
+                <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-slate-100">
+                  <h4 className="text-2xl font-black text-slate-800 tracking-tight">
+                    {teamName}
+                  </h4>
+                  <div
+                    className={`px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 ${
+                      teams[idx].length === CATEGORIES.length
+                        ? "bg-primary/20 text-primary-dark"
+                        : currentTeamIndex === idx
+                          ? "bg-secondary/20 text-slate-800"
+                          : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {teams[idx].length === CATEGORIES.length && (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-4 h-4 text-primary font-bold"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                      </svg>
+                    )}
+                    <span>
+                      {teams[idx].length} / {CATEGORIES.length}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <ul className="space-y-3 flex-grow">
-                {Array.from({ length: CATEGORIES.length }).map((_, catIdx) => {
-                  const player = teams[idx].find(
-                    (p) => p.categoryId === catIdx + 1,
-                  );
-                  const isCurrentBeingDrafted =
-                    currentTeamIndex === idx &&
-                    currentCategoryIndex === catIdx + 1;
+                <ul className="space-y-3 flex-grow">
+                  {Array.from({ length: CATEGORIES.length }).map(
+                    (_, catIdx) => {
+                      const player = teams[idx].find(
+                        (p) => p.categoryId === catIdx + 1,
+                      );
+                      const isCurrentBeingDrafted =
+                        currentTeamIndex === idx &&
+                        currentCategoryIndex === catIdx + 1;
 
-                  return (
-                    <li
-                      key={catIdx}
-                      className={`p-4 rounded-2xl flex items-center justify-between transition-all duration-300 ${
-                        player
-                          ? "bg-primary/10 border border-primary/20"
-                          : isCurrentBeingDrafted
-                            ? "bg-secondary/10 border-2 border-secondary/50 shadow-inner"
-                            : "bg-slate-50 border border-transparent"
-                      }`}
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
-                          Kat {catIdx + 1}
-                        </span>
-                        <span
-                          className={`font-bold transition-all truncate max-w-[150px] ${
+                      return (
+                        <li
+                          key={catIdx}
+                          className={`p-4 rounded-2xl flex items-center justify-between transition-all duration-300 ${
                             player
-                              ? "text-slate-800"
+                              ? "bg-primary/10 border border-primary/20"
                               : isCurrentBeingDrafted
-                                ? "text-slate-600 animate-pulse"
-                                : "text-slate-400"
+                                ? "bg-secondary/10 border-2 border-secondary/50 shadow-inner"
+                                : "bg-slate-50 border border-transparent"
                           }`}
                         >
-                          {player ? player.name.split(" (")[0] : "..."}
-                        </span>
-                      </div>
-                      {player && (
-                        <div className="min-w-[28px] h-7 w-7 rounded-full bg-primary text-white flex items-center justify-center shadow-md animate-popIn">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+                              Kat {catIdx + 1}
+                            </span>
+                            <span
+                              className={`font-bold transition-all truncate max-w-[150px] ${
+                                player
+                                  ? "text-slate-800"
+                                  : isCurrentBeingDrafted
+                                    ? "text-slate-600 animate-pulse"
+                                    : "text-slate-400"
+                              }`}
+                            >
+                              {player ? player.name.split(" (")[0] : "..."}
+                            </span>
+                          </div>
+                          {player && (
+                            <div className="min-w-[28px] h-7 w-7 rounded-full bg-primary text-white flex items-center justify-center shadow-md animate-popIn">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    },
+                  )}
+                </ul>
+              </div>
+            ))}
         </div>
       </div>
     </section>
