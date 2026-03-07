@@ -824,30 +824,33 @@ export default function LigaSelasaStandings() {
                   matches.map((m) => (
                     <div
                       key={m.id}
-                      className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4 group"
+                      className="bg-white dark:bg-slate-800 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-row items-center justify-between gap-2 sm:gap-4 group relative"
                     >
-                      <div className="flex-1 flex justify-end items-center gap-3 w-full">
-                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {/* Home Team */}
+                      <div className="flex-1 flex flex-col sm:flex-row justify-end items-center sm:gap-3 w-full text-center sm:text-right">
+                        <span className="font-bold text-slate-800 dark:text-slate-200 text-sm sm:text-base order-2 sm:order-1 leading-tight mt-1 sm:mt-0">
                           {m.homeTeamName}
                         </span>
                         <span
-                          className={`text-2xl font-black ${m.homeGoals > m.awayGoals ? "text-primary" : "text-slate-600"}`}
+                          className={`text-2xl sm:text-3xl font-black order-1 sm:order-2 ${m.homeGoals > m.awayGoals ? "text-primary" : "text-slate-600"}`}
                         >
                           {m.homeGoals}
                         </span>
                       </div>
 
-                      <div className="bg-slate-100 dark:bg-slate-700 text-slate-500 font-bold px-3 py-1 rounded-md text-xs tracking-widest uppercase mb-2 sm:mb-0">
+                      {/* VS Badge */}
+                      <div className="bg-slate-100 dark:bg-slate-700 text-slate-500 font-bold px-2 py-1 rounded-md text-[10px] sm:text-xs tracking-widest uppercase flex-shrink-0 mt-3 sm:mt-0">
                         VS
                       </div>
 
-                      <div className="flex-1 flex justify-start items-center gap-3 w-full">
+                      {/* Away Team */}
+                      <div className="flex-1 flex flex-col sm:flex-row justify-start items-center sm:gap-3 w-full text-center sm:text-left">
                         <span
-                          className={`text-2xl font-black ${m.awayGoals > m.homeGoals ? "text-primary" : "text-slate-600"}`}
+                          className={`text-2xl sm:text-3xl font-black ${m.awayGoals > m.homeGoals ? "text-primary" : "text-slate-600"}`}
                         >
                           {m.awayGoals}
                         </span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                        <span className="font-bold text-slate-800 dark:text-slate-200 text-sm sm:text-base leading-tight mt-1 sm:mt-0">
                           {m.awayTeamName}
                         </span>
                       </div>
