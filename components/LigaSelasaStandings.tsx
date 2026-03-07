@@ -336,8 +336,8 @@ export default function LigaSelasaStandings() {
         </div>
 
         {/* Custom Tabs */}
-        <div className="flex justify-center mb-10 overflow-x-auto pb-4">
-          <div className="flex bg-white dark:bg-slate-800 p-1 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+        <div className="flex justify-start sm:justify-center mb-10 overflow-x-auto pb-4 snap-x hide-scrollbar">
+          <div className="flex bg-white dark:bg-slate-800 p-1 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 w-max mx-auto md:w-auto">
             <button
               onClick={() => setActiveTab("standings")}
               className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium transition-all duration-200 ${
@@ -638,13 +638,13 @@ export default function LigaSelasaStandings() {
           {/* MATCHES (INPUT) */}
           {activeTab === "matches" && (
             <div className="p-6 md:p-8 bg-slate-50 dark:bg-slate-900/30">
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">
                   Daftar Pertandingan
                 </h3>
                 <button
                   onClick={() => setIsAddingMatch(!isAddingMatch)}
-                  className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                  className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm w-full sm:w-auto justify-center"
                 >
                   {isAddingMatch ? (
                     "Batal"
@@ -707,33 +707,33 @@ export default function LigaSelasaStandings() {
 
                     {/* Scores Setup */}
                     {homeTeam && awayTeam && (
-                      <div className="grid grid-cols-2 gap-8 py-4 border-t border-slate-100 dark:border-slate-700 mt-4">
-                        <div className="text-center">
-                          <label className="block font-bold text-slate-800 dark:text-white mb-2">
-                            {homeTeam} (Skor)
+                      <div className="grid grid-cols-2 gap-4 sm:gap-8 py-6 border-t border-slate-100 dark:border-slate-700 mt-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 sm:p-6 border">
+                        <div className="text-center flex flex-col items-center">
+                          <label className="block font-bold text-emerald-700 dark:text-emerald-400 mb-3 text-sm sm:text-base">
+                            {homeTeam}
                           </label>
                           <input
                             type="number"
                             min="0"
                             max="99"
                             required
-                            className="w-24 text-center text-3xl font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl p-2 outline-none focus:ring-2 focus:ring-primary"
+                            className="w-20 sm:w-24 text-center text-3xl font-black bg-white dark:bg-slate-800 border-2 border-emerald-100 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-100 rounded-2xl p-3 outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-inner"
                             value={homeGoals}
                             onChange={(e) =>
                               setHomeGoals(parseInt(e.target.value) || 0)
                             }
                           />
                         </div>
-                        <div className="text-center">
-                          <label className="block font-bold text-slate-800 dark:text-white mb-2">
-                            {awayTeam} (Skor)
+                        <div className="text-center flex flex-col items-center border-l-2 border-slate-200 dark:border-slate-700 border-dashed pl-4 sm:pl-8">
+                          <label className="block font-bold text-indigo-700 dark:text-indigo-400 mb-3 text-sm sm:text-base">
+                            {awayTeam}
                           </label>
                           <input
                             type="number"
                             min="0"
                             max="99"
                             required
-                            className="w-24 text-center text-3xl font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl p-2 outline-none focus:ring-2 focus:ring-primary"
+                            className="w-20 sm:w-24 text-center text-3xl font-black bg-white dark:bg-slate-800 border-2 border-indigo-100 dark:border-indigo-900/50 text-indigo-900 dark:text-indigo-100 rounded-2xl p-3 outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-inner"
                             value={awayGoals}
                             onChange={(e) =>
                               setAwayGoals(parseInt(e.target.value) || 0)
