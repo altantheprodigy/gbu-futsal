@@ -41,7 +41,7 @@ const CATEGORY_DATA: Record<number, string[]> = {
   3: ["Abidin", "Somad", "Fido", "Oki", "Fayed", "Yai"],
   4: ["Riza", "Rafliagusta", "Abdul", "Adit", "Dobleh", "Anif"],
   5: ["Ziyan", "Kaukaba", "Raja", "Aldo", "Dimas Arya", "Shadiq"],
-  6: ["El", "Aufa", "Soman", "Altan", "Farel", "Aril"],
+  6: ["El", "Aufa", "Soman", "Altan", "Farel", "Reza Andika"],
   7: ["Jeki", "Poci", "Wafa", "Rizal", "Vino", "Praja"],
   8: ["Baim", "Ikal", "Fadhil", "Rizky dembele", "Mirza", "Rapi"],
 };

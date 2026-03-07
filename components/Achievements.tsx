@@ -5,51 +5,58 @@ import React, { useState } from "react";
 const achievements = [
   {
     id: 1,
-    year: "2023",
-    title: "Juara 1 Liga Selasa Ramadhan Cup",
+    year: "2025",
+    title: "Juara 1 Kejuaraan Tarkam Kemenpora",
     description:
-      "Meraih gelar bergengsi di turnamen internal dengan rekor tak terkalahkan sepanjang musim.",
+      "Meraih gelar juara pertama di Kejuaraan Tarkam Kemenpora dengan performa gemilang.",
     type: "gold",
     iconColor: "text-amber-500",
     iconBg: "bg-amber-100",
-    image:
-      "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?q=80&w=600&auto=format&fit=crop",
+    image: "/ChampionAssets/kemenpora_1.jpeg",
   },
   {
     id: 2,
-    year: "2022",
-    title: "Runner Up Futsal Community Fest",
+    year: "Terbaru",
+    title: "Juara 1 Sukun Futsal League",
     description:
-      "Menjadi juara kedua dalam kompetisi antar komunitas futsal se-regional, menampilkan permainan solid.",
-    type: "silver",
-    iconColor: "text-slate-400",
-    iconBg: "bg-slate-100",
-    image:
-      "https://images.unsplash.com/photo-1526232761682-d26e03ac148e?q=80&w=600&auto=format&fit=crop",
-  },
-  {
-    id: 3,
-    year: "2021",
-    title: "Juara 3 Pertandingan Persahabatan",
-    description:
-      "Menunjukkan dominasi sejak awal turnamen dan meraih posisi podium dengan pertahanan yang kuat.",
-    type: "bronze",
-    iconColor: "text-orange-600",
-    iconBg: "bg-orange-100",
-    image:
-      "https://images.unsplash.com/photo-1518605338466-419b6eb51493?q=80&w=600&auto=format&fit=crop",
-  },
-  {
-    id: 4,
-    year: "2020",
-    title: "Juara 1 Turnamen Kemerdekaan",
-    description:
-      "Membawa pulang piala di kompetisi agustusan antar RW dengan performa memukau.",
+      "Menjadi kampiun dalam kompetisi Sukun Futsal League setelah menampilkan permainan solid tak terkalahkan.",
     type: "gold",
     iconColor: "text-amber-500",
     iconBg: "bg-amber-100",
-    image:
-      "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?q=80&w=600&auto=format&fit=crop",
+    image: "/ChampionAssets/sukun_1.jpeg",
+  },
+  {
+    id: 3,
+    year: "2014",
+    title: "Juara 1 Kompi Cup",
+    description:
+      "Membawa pulang piala utama di turnamen Kompi berkat kerja sama tim dan strategi efektif.",
+    type: "gold",
+    iconColor: "text-amber-500",
+    iconBg: "bg-amber-100",
+    image: "/ChampionAssets/kompi_1.jpeg",
+  },
+  {
+    id: 4,
+    year: "Terbaru",
+    title: "Juara 3 AD Astra Cup",
+    description:
+      "Berhasil mengamankan posisi ketiga di AD Astra Cup dengan semangat juang ekstra.",
+    type: "bronze",
+    iconColor: "text-orange-600",
+    iconBg: "bg-orange-100",
+    image: "/ChampionAssets/ad_3.jpeg",
+  },
+  {
+    id: 5,
+    year: "2024",
+    title: "Juara 3 Ketupat Futsal Cup",
+    description:
+      "Meraih posisi podium pada turnamen Ketupat Futsal Cup antar komunitas yang sangat kompetitif.",
+    type: "bronze",
+    iconColor: "text-orange-600",
+    iconBg: "bg-orange-100",
+    image: "/ChampionAssets/ketupat_3.jpeg",
   },
 ];
 
@@ -84,11 +91,11 @@ export default function Achievements() {
               key={item.id}
               className="group bg-white rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border-b-4 border-transparent hover:border-secondary flex flex-col relative overflow-hidden"
             >
-              <div className="h-64 w-full relative overflow-hidden bg-slate-200">
+              <div className="w-full relative overflow-hidden bg-slate-200 aspect-[4/3] md:aspect-video rounded-t-2xl">
                 <img
                   src={item.image}
                   alt={item.title}
-                  className="object-contain w-full h-full transform group-hover:scale-105 transition-transform duration-700 bg-white"
+                  className="object-contain w-full h-full transform group-hover:scale-105 transition-transform duration-700 bg-white/5 backdrop-blur-sm"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                 <div className="absolute bottom-4 left-4 flex items-center gap-3">

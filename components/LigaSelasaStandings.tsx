@@ -324,7 +324,7 @@ export default function LigaSelasaStandings() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight">
-            Liga Selasa{" "}
+            LigaSelasa{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
               Statistik
             </span>
