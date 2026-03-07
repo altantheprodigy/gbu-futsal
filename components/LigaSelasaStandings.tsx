@@ -272,15 +272,14 @@ export default function LigaSelasaStandings() {
   TEAM_NAMES.forEach((teamName, idx) => {
     const teamPlayers = teamsData[idx] || [];
     teamPlayers.forEach((p) => {
-      if (p.categoryId !== 1 && playerGoalCount[p.id]) {
-        // Exclude Goalkeepers generically (Cat 1 is GK in spin logic)
+      if (playerGoalCount[p.id]) {
         topScorers.push({
           id: p.id,
           name: p.name.replace(/\(GK\)/g, "").trim(),
           teamName: teamName,
           goals: playerGoalCount[p.id],
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`,
-          isGoalkeeper: false,
+          isGoalkeeper: p.categoryId === 1 || p.name.includes("(GK)"),
         });
       }
     });
