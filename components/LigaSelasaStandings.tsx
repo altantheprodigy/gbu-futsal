@@ -760,15 +760,19 @@ export default function LigaSelasaStandings() {
                             return (
                               <div
                                 key={idx}
-                                className="flex items-center gap-3"
+                                className="flex items-center gap-3 bg-white dark:bg-slate-800 p-2 sm:p-3 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm"
                               >
                                 <span
-                                  className={`text-xs font-bold w-16 px-2 py-1 rounded text-center ${isHome ? "bg-primary/20 text-primary-dark" : "bg-slate-200 text-slate-700"}`}
+                                  className={`text-xs font-bold w-16 px-2 py-1.5 rounded text-center whitespace-nowrap ${
+                                    isHome
+                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                                      : "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300"
+                                  }`}
                                 >
-                                  Gol {isHome ? "Home" : "Away"}
+                                  Skor {isHome ? "Home" : "Away"}
                                 </span>
                                 <select
-                                  className="flex-1 bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-600 text-sm rounded outline-none p-2"
+                                  className="flex-1 bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-sm rounded-md outline-none p-2.5 focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                                   value={detail.playerId}
                                   onChange={(e) => {
                                     const newDetails = [...goalDetails];
@@ -776,7 +780,9 @@ export default function LigaSelasaStandings() {
                                     setGoalDetails(newDetails);
                                   }}
                                 >
-                                  <option value="">(Pilih {teamL})</option>
+                                  <option value="">
+                                    (Pilih Pemain {teamL})
+                                  </option>
                                   {availablePlayers.map((p) => (
                                     <option key={p.id} value={p.id}>
                                       {p.name}
