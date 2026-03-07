@@ -22,13 +22,13 @@ export default function Hero() {
         </div>
 
         <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-6 text-primary drop-shadow-sm uppercase">
-          GBU Futsal <span className="text-secondary">Club</span>
+          GBU Futsal <span className="text-secondary">Academy</span>
         </h1>
 
         <p className="text-lg md:text-2xl text-slate-600 mb-10 max-w-2xl font-light leading-relaxed">
           Selamat datang di markas virtual kebanggaan kita. Tempat di mana
           semangat, kerja keras, dan sportivitas berpadu menjadi{" "}
-          <strong className="font-semibold text-primary">juara</strong>.
+          <strong className="font-semibold text-primary">JUARA</strong>.
         </p>
 
         <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6 w-full px-4 mt-4">

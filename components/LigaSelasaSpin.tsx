@@ -231,7 +231,7 @@ export default function LigaSelasaSpin() {
           <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight">
             Draft{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-600">
-              Liga Selasa
+              LigaSelasa
             </span>
           </h2>
           <p className="text-slate-600 max-w-2xl mx-auto text-lg leading-relaxed mb-6">

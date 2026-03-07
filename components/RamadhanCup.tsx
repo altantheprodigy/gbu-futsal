@@ -65,7 +65,7 @@ export default function RamadhanCup() {
             Event Internal Tahunan
           </h2>
           <h3 className="text-3xl md:text-5xl font-black text-primary uppercase drop-shadow-sm">
-            Liga Selasa <span className="text-secondary">Ramadhan Cup</span>
+            LigaSelasa <span className="text-secondary">Ramadhan Cup</span>
           </h3>
           <p className="mt-6 text-slate-600 max-w-2xl mx-auto font-light leading-relaxed">
             Sejarah panjang persaingan sehat antar anggota GBU Futsal Club yang

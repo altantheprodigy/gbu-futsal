@@ -53,7 +53,7 @@ export default function StaffGrid() {
           <div className="w-24 h-1.5 bg-secondary mx-auto mt-6 rounded-full"></div>
           <p className="mt-6 text-slate-600 max-w-2xl mx-auto font-light leading-relaxed">
             Merekalah sosok-sosok penting yang mendedikasikan waktu dan tenaga
-            untuk memastikan GBU Futsal Club selalu tampil maksimal di setiap
+            untuk memastikan GBU Futsal Academy selalu tampil maksimal di setiap
             pertandingan.
           </p>
         </div>
