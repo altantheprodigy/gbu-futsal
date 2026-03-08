@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const TEAM_NAMES = [
   "Pokemon",
@@ -39,7 +39,7 @@ const CATEGORY_DATA: Record<number, string[]> = {
   ],
   2: ["Kaji", "Ambon", "Ari", "Alvin", "Pumandala", "Mas windo"],
   3: ["Abidin", "Somad", "Fido", "Oki", "Fayed", "Yai"],
-  4: ["Riza", "Rafliagusta", "Abdul", "Adit", "Dobleh", "Anif"],
+  4: ["Riza", "Rafliagusta", "Abdul", "Adit", "Dobleh", "Anif", "Qodri"],
   5: ["Ziyan", "Kaukaba", "Raja", "Aldo", "Dimas Arya", "Shadiq"],
   6: ["El", "Aufa", "Soman", "Altan", "Farel", "Reza Andika"],
   7: ["Jeki", "Poci", "Wafa", "Rizal", "Vino", "Praja"],
@@ -87,7 +87,14 @@ export default function LigaSelasaSpin() {
     if (savedCatIdx) setCurrentCategoryIndex(parseInt(savedCatIdx, 10));
 
     if (savedTeamIdx && parseInt(savedTeamIdx, 10) >= TEAM_NAMES.length) {
-      setDisplayValue("Draft Selesai 🎉");
+      if (
+        savedAvailablePlayers &&
+        JSON.parse(savedAvailablePlayers).length > 0
+      ) {
+        setDisplayValue("Siap Mengacak!");
+      } else {
+        setDisplayValue("Draft Selesai 🎉");
+      }
     }
 
     return () => {
@@ -128,8 +135,105 @@ export default function LigaSelasaSpin() {
     }
   };
 
+  const handleAutoFill = () => {
+    if (confirm("Acak cepat seluruh sisa pemain (Mode Dev)?")) {
+      let currentAvail = [...availablePlayers];
+      const currentTms = teams.map((t) => [...t]);
+      let currTeamIdx = currentTeamIndex;
+      let currCatIdx = currentCategoryIndex;
+
+      // Regular categories
+      while (currTeamIdx < TEAM_NAMES.length) {
+        const catPlayers = currentAvail.filter(
+          (p) => p.categoryId === currCatIdx,
+        );
+
+        if (catPlayers.length > 0) {
+          const winnerIndex = Math.floor(Math.random() * catPlayers.length);
+          const winner = catPlayers[winnerIndex];
+
+          currentAvail = currentAvail.filter((p) => p.id !== winner.id);
+          currentTms[currTeamIdx].push(winner);
+        }
+
+        currCatIdx++;
+        if (currCatIdx > CATEGORIES.length) {
+          currCatIdx = 1;
+          currTeamIdx++;
+        }
+      }
+
+      // Extra players
+      while (currentAvail.length > 0) {
+        const extraPlayer = currentAvail[0];
+        const winnerTeamIndex = Math.floor(Math.random() * TEAM_NAMES.length);
+
+        currentAvail = currentAvail.filter((p) => p.id !== extraPlayer.id);
+        currentTms[winnerTeamIndex].push(extraPlayer);
+      }
+
+      setAvailablePlayers(currentAvail);
+      setTeams(currentTms);
+      setCurrentTeamIndex(TEAM_NAMES.length);
+      setCurrentCategoryIndex(CATEGORIES.length + 1);
+      setDisplayValue("Draft Selesai 🎉");
+      setSpinResult(null);
+    }
+  };
+
   const handleSpin = () => {
-    if (isSpinning || currentTeamIndex >= TEAM_NAMES.length) return;
+    if (isSpinning) return;
+    if (currentTeamIndex >= TEAM_NAMES.length && availablePlayers.length === 0)
+      return;
+
+    if (currentTeamIndex >= TEAM_NAMES.length && availablePlayers.length > 0) {
+      setIsSpinning(true);
+      setSpinResult(null);
+
+      const extraPlayer = availablePlayers[0];
+      const winnerTeamIndex = Math.floor(Math.random() * TEAM_NAMES.length);
+      const winnerTeamName = TEAM_NAMES[winnerTeamIndex];
+
+      let spinCount = 0;
+      const maxSpins = 20;
+      const spinSpeed = 100;
+
+      spinIntervalRef.current = setInterval(() => {
+        setDisplayValue(
+          TEAM_NAMES[Math.floor(Math.random() * TEAM_NAMES.length)],
+        );
+        spinCount++;
+        if (spinCount >= maxSpins) {
+          if (spinIntervalRef.current) clearInterval(spinIntervalRef.current);
+
+          setDisplayValue(winnerTeamName);
+          setSpinResult(extraPlayer);
+          setIsSpinning(false);
+
+          setTimeout(() => {
+            setAvailablePlayers((prev) =>
+              prev.filter((p) => p.id !== extraPlayer.id),
+            );
+            setTeams((prevTeams) => {
+              const newTeams = [...prevTeams];
+              newTeams[winnerTeamIndex] = [
+                ...newTeams[winnerTeamIndex],
+                extraPlayer,
+              ];
+              return newTeams;
+            });
+
+            setDisplayValue(
+              availablePlayers.length > 1
+                ? "Siap Mengacak!"
+                : "Draft Selesai 🎉",
+            );
+            setSpinResult(null);
+          }, 1500);
+        }
+      }, spinSpeed);
+      return;
+    }
 
     setIsSpinning(true);
     setSpinResult(null);
@@ -188,7 +292,7 @@ export default function LigaSelasaSpin() {
           setCurrentCategoryIndex(nextCategory);
           setCurrentTeamIndex(nextTeam);
           setDisplayValue(
-            nextTeam < TEAM_NAMES.length
+            nextTeam < TEAM_NAMES.length || availablePlayers.length > 1
               ? "Siap Mengacak!"
               : "Draft Selesai 🎉",
           );
@@ -238,26 +342,40 @@ export default function LigaSelasaSpin() {
             Sistem pengundian acak untuk mendistribusikan pemain ke dalam 6 tim
             secara adil berdasarkan 8 kategori. Progres Anda otomatis tersimpan.
           </p>
-          <button
-            onClick={handleReset}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold rounded-full transition-colors active:scale-95"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <div className="flex flex-wrap justify-center items-center gap-4">
+            <button
+              onClick={handleReset}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold rounded-full transition-colors active:scale-95"
             >
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
-            Reset Draft
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              Reset Draft
+            </button>
+            {process.env.NODE_ENV === "development" && (
+              <button
+                onClick={handleAutoFill}
+                disabled={
+                  currentTeamIndex >= TEAM_NAMES.length &&
+                  availablePlayers.length === 0
+                }
+                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-bold rounded-full transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ⚡ Acak Cepat (Dev)
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Spin Area Main Card */}
@@ -267,12 +385,16 @@ export default function LigaSelasaSpin() {
             <h3 className="text-3xl font-black uppercase tracking-widest relative z-10 text-secondary drop-shadow-md">
               {currentTeamIndex < TEAM_NAMES.length
                 ? `Drafting: ${TEAM_NAMES[currentTeamIndex]}`
-                : "Draft Selesai 🎉"}
+                : availablePlayers.length > 0
+                  ? "Extra Draft"
+                  : "Draft Selesai 🎉"}
             </h3>
             <p className="text-slate-300 mt-2 text-lg font-medium relative z-10">
               {currentTeamIndex < TEAM_NAMES.length
                 ? `Mencari Pemain untuk ${CATEGORIES[currentCategoryIndex - 1]}`
-                : "Semua tim telah berhasil terbentuk!"}
+                : availablePlayers.length > 0
+                  ? `Mencari Tim untuk ${availablePlayers[0].name}`
+                  : "Semua tim telah berhasil terbentuk!"}
             </p>
           </div>
 
@@ -295,17 +417,20 @@ export default function LigaSelasaSpin() {
               )}
             </div>
 
-            {currentTeamIndex < TEAM_NAMES.length && (
+            {(currentTeamIndex < TEAM_NAMES.length ||
+              availablePlayers.length > 0) && (
               <button
                 onClick={handleSpin}
-                disabled={isSpinning || currentTeamIndex >= TEAM_NAMES.length}
+                disabled={isSpinning}
                 className="group relative bg-secondary hover:bg-[#e6c200] text-slate-900 font-bold text-xl md:text-2xl py-5 px-14 rounded-full shadow-xl hover:shadow-2xl transition-all active:scale-95 uppercase tracking-widest overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
                 <span className="relative">
                   {isSpinning
                     ? "Mengacak..."
-                    : `Spin Kategori ${currentCategoryIndex}`}
+                    : currentTeamIndex < TEAM_NAMES.length
+                      ? `Spin Kategori ${currentCategoryIndex}`
+                      : `Spin Tim`}
                 </span>
               </button>
             )}
@@ -326,7 +451,7 @@ export default function LigaSelasaSpin() {
                 className={`bg-white rounded-3xl p-8 shadow-lg border-2 transition-all duration-500 ease-out flex flex-col ${
                   currentTeamIndex === idx
                     ? "border-secondary shadow-secondary/20 shadow-[-5px_-5px_20px_rgba(0,0,0,0.05),_5px_5px_20px_rgba(250,204,21,0.2)] scale-[1.03] ring-4 ring-secondary/20 z-10"
-                    : teams[idx].length === CATEGORIES.length
+                    : teams[idx].length >= CATEGORIES.length
                       ? "border-primary/30 bg-primary/[0.02]"
                       : "border-slate-100 hover:border-slate-200"
                 }`}
@@ -337,14 +462,14 @@ export default function LigaSelasaSpin() {
                   </h4>
                   <div
                     className={`px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 ${
-                      teams[idx].length === CATEGORIES.length
+                      teams[idx].length >= CATEGORIES.length
                         ? "bg-primary/20 text-primary-dark"
                         : currentTeamIndex === idx
                           ? "bg-secondary/20 text-slate-800"
                           : "bg-slate-100 text-slate-500"
                     }`}
                   >
-                    {teams[idx].length === CATEGORIES.length && (
+                    {teams[idx].length >= CATEGORIES.length && (
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="w-4 h-4 text-primary font-bold"
@@ -366,63 +491,69 @@ export default function LigaSelasaSpin() {
                 </div>
 
                 <ul className="space-y-3 flex-grow">
-                  {Array.from({ length: CATEGORIES.length }).map(
-                    (_, catIdx) => {
-                      const player = teams[idx].find(
-                        (p) => p.categoryId === catIdx + 1,
-                      );
-                      const isCurrentBeingDrafted =
-                        currentTeamIndex === idx &&
-                        currentCategoryIndex === catIdx + 1;
+                  {Array.from({
+                    length: Math.max(CATEGORIES.length, teams[idx].length),
+                  }).map((_, slotIdx) => {
+                    const player = teams[idx][slotIdx];
+                    let catLabel = `Kat ${slotIdx + 1}`;
+                    if (player) {
+                      catLabel = `Kat ${player.categoryId}`;
+                    } else if (slotIdx >= CATEGORIES.length) {
+                      catLabel = "Extra";
+                    }
 
-                      return (
-                        <li
-                          key={catIdx}
-                          className={`p-4 rounded-2xl flex items-center justify-between transition-all duration-300 ${
-                            player
-                              ? "bg-primary/10 border border-primary/20"
-                              : isCurrentBeingDrafted
-                                ? "bg-secondary/10 border-2 border-secondary/50 shadow-inner"
-                                : "bg-slate-50 border border-transparent"
-                          }`}
-                        >
-                          <div className="flex flex-col">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
-                              Kat {catIdx + 1}
-                            </span>
-                            <span
-                              className={`font-bold transition-all truncate max-w-[150px] ${
-                                player
-                                  ? "text-slate-800"
-                                  : isCurrentBeingDrafted
-                                    ? "text-slate-600 animate-pulse"
-                                    : "text-slate-400"
-                              }`}
+                    const isCurrentBeingDrafted =
+                      currentTeamIndex === idx &&
+                      currentCategoryIndex === slotIdx + 1 &&
+                      slotIdx < CATEGORIES.length;
+
+                    return (
+                      <li
+                        key={slotIdx}
+                        className={`p-4 rounded-2xl flex items-center justify-between transition-all duration-300 ${
+                          player
+                            ? "bg-primary/10 border border-primary/20"
+                            : isCurrentBeingDrafted
+                              ? "bg-secondary/10 border-2 border-secondary/50 shadow-inner"
+                              : "bg-slate-50 border border-transparent"
+                        }`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+                            {catLabel}
+                          </span>
+                          <span
+                            className={`font-bold transition-all truncate max-w-[150px] ${
+                              player
+                                ? "text-slate-800"
+                                : isCurrentBeingDrafted
+                                  ? "text-slate-600 animate-pulse"
+                                  : "text-slate-400"
+                            }`}
+                          >
+                            {player ? player.name.split(" (")[0] : "..."}
+                          </span>
+                        </div>
+                        {player && (
+                          <div className="min-w-[28px] h-7 w-7 rounded-full bg-primary text-white flex items-center justify-center shadow-md animate-popIn">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                             >
-                              {player ? player.name.split(" (")[0] : "..."}
-                            </span>
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
                           </div>
-                          {player && (
-                            <div className="min-w-[28px] h-7 w-7 rounded-full bg-primary text-white flex items-center justify-center shadow-md animate-popIn">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                              </svg>
-                            </div>
-                          )}
-                        </li>
-                      );
-                    },
-                  )}
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}

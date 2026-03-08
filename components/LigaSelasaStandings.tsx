@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { Activity, Plus, Shield, Trash2, Trophy, Users } from "lucide-react";
 import Image from "next/image";
-import { Users, Trophy, Shield, Activity, Plus, Trash2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
 
 // --- TYPES ---
 type PlayerDraft = {
@@ -57,6 +57,15 @@ const TEAM_NAMES = [
   "Doraemon",
   "Jumbo",
 ];
+
+const TEAM_LOGOS: Record<string, string> = {
+  Pokemon: "/TeamLogoAssets/pokemon_logo.jpeg",
+  Naruto: "/TeamLogoAssets/naruto_logo.jpeg",
+  Tsubasa: "/TeamLogoAssets/tsubasa_logo.jpeg",
+  "Power Rangers": "/TeamLogoAssets/power_rangers_logo.jpeg",
+  Doraemon: "/TeamLogoAssets/doraemon_logo.jpeg",
+  Jumbo: "/TeamLogoAssets/jumbo_logo.jpeg",
+};
 
 export default function LigaSelasaStandings() {
   const [activeTab, setActiveTab] = useState<
@@ -203,7 +212,9 @@ export default function LigaSelasaStandings() {
     const seed = name.replace(/\s/g, "");
     standingsMap.set(name, {
       name: name,
-      logo: `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=047857`,
+      logo:
+        TEAM_LOGOS[name] ||
+        `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=047857`,
       played: 0,
       win: 0,
       draw: 0,
