@@ -88,7 +88,8 @@ export default function LigaSelasaStandings() {
   useEffect(() => {
     setIsMounted(true);
     // Load teams from spin draft
-    const savedTeams = localStorage.getItem("ls_teams");
+    const savedTeams =
+      localStorage.getItem("ls_v2_teams") || localStorage.getItem("ls_teams");
     if (savedTeams) {
       setTeamsData(JSON.parse(savedTeams));
     } else {
@@ -791,7 +792,9 @@ export default function LigaSelasaStandings() {
                                   }}
                                 >
                                   <option value="">
-                                    (Pilih Pemain {teamL})
+                                    {availablePlayers.length > 0
+                                      ? `(Pilih Pemain ${teamL})`
+                                      : `(Kosong - Spin Dulu di HP ini)`}
                                   </option>
                                   {availablePlayers.map((p) => (
                                     <option key={p.id} value={p.id}>
