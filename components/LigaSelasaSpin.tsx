@@ -39,23 +39,26 @@ const CATEGORY_DATA: Record<number, string[]> = {
   ],
   2: ["Kaji", "Ambon", "Ari", "Alvin", "Pumandala", "Mas windo"],
   3: ["Abidin", "Somad", "Fido", "Oki", "Fayed", "Yai"],
-  4: ["Riza", "Rafliagusta", "Abdul", "Adit", "Dobleh", "Anif", "Qodri"],
+  4: ["Riza", "Rafliagusta", "Abdul", "Adit", "Dobleh", "Anif"],
   5: ["Ziyan", "Kaukaba", "Raja", "Aldo", "Dimas Arya", "Shadiq"],
   6: ["El", "Aufa", "Soman", "Altan", "Farel", "Reza Andika"],
   7: ["Jeki", "Poci", "Wafa", "Rizal", "Vino", "Praja"],
   8: ["Baim", "Ikal", "Fadhil", "Rizky dembele", "Mirza", "Rapi"],
+  9: ["Qodri"],
 };
 
 const INITIAL_PLAYERS: Player[] = [];
-for (let c = 1; c <= CATEGORIES.length; c++) {
+for (let c = 1; c <= Object.keys(CATEGORY_DATA).length; c++) {
   const players = CATEGORY_DATA[c];
-  players.forEach((playerName, idx) => {
-    INITIAL_PLAYERS.push({
-      id: `c${c}-p${idx + 1}`,
-      name: playerName,
-      categoryId: c,
+  if (players) {
+    players.forEach((playerName, idx) => {
+      INITIAL_PLAYERS.push({
+        id: `c${c}-p${idx + 1}`,
+        name: playerName,
+        categoryId: c,
+      });
     });
-  });
+  }
 }
 
 export default function LigaSelasaSpin() {
@@ -75,10 +78,12 @@ export default function LigaSelasaSpin() {
   // Load initial state from local storage on mount
   useEffect(() => {
     setIsMounted(true);
-    const savedAvailablePlayers = localStorage.getItem("ls_availablePlayers");
-    const savedTeams = localStorage.getItem("ls_teams");
-    const savedTeamIdx = localStorage.getItem("ls_currentTeamIndex");
-    const savedCatIdx = localStorage.getItem("ls_currentCategoryIndex");
+    const savedAvailablePlayers = localStorage.getItem(
+      "ls_v2_availablePlayers",
+    );
+    const savedTeams = localStorage.getItem("ls_v2_teams");
+    const savedTeamIdx = localStorage.getItem("ls_v2_currentTeamIndex");
+    const savedCatIdx = localStorage.getItem("ls_v2_currentCategoryIndex");
 
     if (savedAvailablePlayers)
       setAvailablePlayers(JSON.parse(savedAvailablePlayers));
@@ -106,13 +111,16 @@ export default function LigaSelasaSpin() {
   useEffect(() => {
     if (isMounted) {
       localStorage.setItem(
-        "ls_availablePlayers",
+        "ls_v2_availablePlayers",
         JSON.stringify(availablePlayers),
       );
-      localStorage.setItem("ls_teams", JSON.stringify(teams));
-      localStorage.setItem("ls_currentTeamIndex", currentTeamIndex.toString());
+      localStorage.setItem("ls_v2_teams", JSON.stringify(teams));
       localStorage.setItem(
-        "ls_currentCategoryIndex",
+        "ls_v2_currentTeamIndex",
+        currentTeamIndex.toString(),
+      );
+      localStorage.setItem(
+        "ls_v2_currentCategoryIndex",
         currentCategoryIndex.toString(),
       );
     }
