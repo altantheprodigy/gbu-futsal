@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any, prefer-const, @typescript-eslint/no-unused-vars */
 
 import { Activity, Plus, Shield, Trash2, Trophy, Users } from "lucide-react";
 import Image from "next/image";

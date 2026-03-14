@@ -44,9 +44,9 @@ export default function LigaSelasaSpin() {
         }));
 
         setTeams(formattedTeams);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching data:", err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setIsLoading(false);
       }
