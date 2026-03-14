@@ -3,31 +3,12 @@
 import { Activity, Plus, Shield, Trash2, Trophy, Users } from "lucide-react";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 // --- TYPES ---
-type PlayerDraft = {
-  id: string;
-  name: string;
-  categoryId: number; // Cat 1 is Goalkeeper usually
-};
 
-type GoalInput = {
-  scoringTeamId: string; // "home" or "away"
-  playerId: string;
-};
-
-type Match = {
-  id: string;
-  homeTeamName: string;
-  awayTeamName: string;
-  homeGoals: number;
-  awayGoals: number;
-  goalDetails: GoalInput[]; // Record who scored
-  timestamp: number;
-};
-
-// Derived types for calculations
 type TeamStat = {
+  id: string;
   name: string;
   logo: string;
   played: number;
@@ -49,14 +30,19 @@ type PlayerStat = {
   isGoalkeeper: boolean;
 };
 
-const TEAM_NAMES = [
-  "Pokemon",
-  "Naruto",
-  "Tsubasa",
-  "Power Rangers",
-  "Doraemon",
-  "Jumbo",
-];
+type MatchDisplay = {
+  id: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  homeGoals: number;
+  awayGoals: number;
+  timestamp: string;
+};
+
+type GoalInput = {
+  scoringTeamId: "home" | "away";
+  playerId: string;
+};
 
 const TEAM_LOGOS: Record<string, string> = {
   Pokemon: "/TeamLogoAssets/pokemon_logo.jpeg",
@@ -71,264 +57,353 @@ export default function LigaSelasaStandings() {
   const [activeTab, setActiveTab] = useState<
     "standings" | "topscorer" | "bestgk" | "matches"
   >("standings");
-  const [isMounted, setIsMounted] = useState(false);
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // --- RAW STATE ---
-  const [teamsData, setTeamsData] = useState<PlayerDraft[][]>([]);
-  const [matches, setMatches] = useState<Match[]>([]);
+  // Operator PIN Setup
+  const OPERATOR_PIN = "ligaselasa123";
+
+  // --- RAW DATA ---
+  const [standings, setStandings] = useState<TeamStat[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [players, setPlayers] = useState<any[]>([]);
+  const [matches, setMatches] = useState<MatchDisplay[]>([]);
+  
+  // Derived Stats
+  const [topScorers, setTopScorers] = useState<PlayerStat[]>([]);
+  const [bestGks, setBestGks] = useState<PlayerStat[]>([]);
 
   // -- MATCH FORM STATE --
   const [isAddingMatch, setIsAddingMatch] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [homeTeam, setHomeTeam] = useState<string>("");
   const [awayTeam, setAwayTeam] = useState<string>("");
   const [homeGoals, setHomeGoals] = useState<number>(0);
   const [awayGoals, setAwayGoals] = useState<number>(0);
   const [goalDetails, setGoalDetails] = useState<GoalInput[]>([]);
 
-  useEffect(() => {
-    setIsMounted(true);
-    // Load teams from spin draft
-    const savedTeams =
-      localStorage.getItem("ls_v2_teams") || localStorage.getItem("ls_teams");
-    if (savedTeams) {
-      setTeamsData(JSON.parse(savedTeams));
-    } else {
-      setTeamsData(TEAM_NAMES.map(() => []));
-    }
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      // 1. Fetch Teams & Players
+      const { data: teamsData, error: teamsErr } = await supabase.from("teams").select("*");
+      if (teamsErr) throw teamsErr;
+      setTeams(teamsData);
 
-    // Load matches
-    const savedMatches = localStorage.getItem("ls_matches");
-    if (savedMatches) {
-      setMatches(JSON.parse(savedMatches));
+      const { data: playersData, error: playersErr } = await supabase.from("players").select("*");
+      if (playersErr) throw playersErr;
+      setPlayers(playersData);
+
+      // 2. Formulate Standings derived entirely from teams and matches
+      // This is dynamic and foolproof, circumventing any RLS UPDATE errors on the standings table forever.
+      const initialStandings: TeamStat[] = (teamsData || []).map((t: any) => {
+         const seed = t.name.replace(/\s/g, "");
+         return {
+           id: t.id,
+           name: t.name,
+           logo: TEAM_LOGOS[t.name] || `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=047857`,
+           played: 0,
+           win: 0,
+           draw: 0,
+           lose: 0,
+           goalsFor: 0,
+           goalsAgainst: 0,
+           goalDifference: 0,
+           points: 0
+         };
+      });
+
+      // 3. Fetch Matches
+      const { data: matchesData, error: matchesErr } = await supabase
+        .from("matches")
+        .select(`
+           id,
+           home_team_id,
+           away_team_id,
+           home_goals,
+           away_goals,
+           created_at,
+           home_team:teams!matches_home_team_id_fkey(name),
+           away_team:teams!matches_away_team_id_fkey(name)
+        `)
+        .order("created_at", { ascending: false });
+        
+      if (matchesErr) throw matchesErr;
+
+      const formattedMatches: MatchDisplay[] = (matchesData || []).map((m: any) => ({
+         id: m.id,
+         homeTeamName: m.home_team.name,
+         awayTeamName: m.away_team.name,
+         homeGoals: m.home_goals,
+         awayGoals: m.away_goals,
+         timestamp: m.created_at,
+      }));
+      setMatches(formattedMatches);
+
+      // Process Matches to populate Standings
+      (matchesData || []).forEach((m: any) => {
+          const homeTeam = initialStandings.find((t) => t.id === m.home_team_id);
+          const awayTeam = initialStandings.find((t) => t.id === m.away_team_id);
+
+          if (homeTeam && awayTeam) {
+              homeTeam.played += 1;
+              awayTeam.played += 1;
+              homeTeam.goalsFor += m.home_goals;
+              homeTeam.goalsAgainst += m.away_goals;
+              awayTeam.goalsFor += m.away_goals;
+              awayTeam.goalsAgainst += m.home_goals;
+
+              if (m.home_goals > m.away_goals) {
+                  homeTeam.win += 1;
+                  homeTeam.points += 3;
+                  awayTeam.lose += 1;
+              } else if (m.home_goals < m.away_goals) {
+                  awayTeam.win += 1;
+                  awayTeam.points += 3;
+                  homeTeam.lose += 1;
+              } else {
+                  homeTeam.draw += 1;
+                  awayTeam.draw += 1;
+                  homeTeam.points += 1;
+                  awayTeam.points += 1;
+              }
+
+              homeTeam.goalDifference = homeTeam.goalsFor - homeTeam.goalsAgainst;
+              awayTeam.goalDifference = awayTeam.goalsFor - awayTeam.goalsAgainst;
+          }
+      });
+
+      initialStandings.sort((a, b) => {
+         if (a.points !== b.points) return b.points - a.points;
+         if (a.goalDifference !== b.goalDifference) return b.goalDifference - a.goalDifference;
+         return b.goalsFor - a.goalsFor;
+      });
+      setStandings(initialStandings);
+
+      // 4. Calculate Top Scorers based on goals table
+      const { data: goalsData, error: goalsErr } = await supabase
+        .from("goals")
+        .select(`player_id, players (name, is_gk, team_id), teams (name)`);
+        
+      if (goalsErr) throw goalsErr;
+
+      const goalCounts: Record<string, number> = {};
+      (goalsData || []).forEach((g: any) => {
+         if (g.player_id) {
+           goalCounts[g.player_id] = (goalCounts[g.player_id] || 0) + 1;
+         }
+      });
+
+      const scorers: PlayerStat[] = [];
+      Object.keys(goalCounts).forEach(playerId => {
+         const playerRef = (playersData || []).find((p: any) => p.id === playerId);
+         const teamRef = (teamsData || []).find((t: any) => t.id === playerRef?.team_id);
+         
+         if (playerRef) {
+             scorers.push({
+               id: playerId,
+               name: playerRef.name,
+               teamName: teamRef ? teamRef.name : "Unknown",
+               avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${playerRef.name}`,
+               goals: goalCounts[playerId],
+               isGoalkeeper: playerRef.is_gk
+             });
+         }
+      });
+      
+      scorers.sort((a, b) => b.goals - a.goals);
+      setTopScorers(scorers.slice(0, 5));
+
+      // 5. Calculate Best GK
+      // A simple logic: lowest goals conceded.
+      // We look at the standings for goals_against per team, and assign that to the GK of that team.
+      const gks: PlayerStat[] = [];
+      (playersData || []).filter((p: any) => p.is_gk).forEach((gk: any) => {
+         const teamStat = initialStandings.find(s => s.id === gk.team_id);
+         if (teamStat && teamStat.played > 0) {
+             gks.push({
+                 id: gk.id,
+                 name: gk.name,
+                 teamName: teamStat.name,
+                 avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${gk.name}`,
+                 goals: teamStat.goalsAgainst, // represents goals conceded here
+                 isGoalkeeper: true
+             });
+         }
+      });
+      
+      gks.sort((a, b) => a.goals - b.goals);
+      setBestGks(gks.slice(0, 3));
+
+    } catch (err: any) {
+      console.error("Error fetching data:", err);
+      setError(err.message);
+    } finally {
+       setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
-
-  useEffect(() => {
-    if (isMounted) {
-      localStorage.setItem("ls_matches", JSON.stringify(matches));
-    }
-  }, [matches, isMounted]);
 
   // Adjust goalDetails array size when home/away goals change
   useEffect(() => {
-    const totalGoals = homeGoals + awayGoals;
     let newDetails = [...goalDetails];
 
-    // Determine how many home/away goals we expect vs what we have
-    const currentHomeGoalsInDetails = newDetails.filter(
-      (d) => d.scoringTeamId === "home",
-    ).length;
-    const currentAwayGoalsInDetails = newDetails.filter(
-      (d) => d.scoringTeamId === "away",
-    ).length;
+    const currentHomeGoalsInDetails = newDetails.filter((d) => d.scoringTeamId === "home").length;
+    const currentAwayGoalsInDetails = newDetails.filter((d) => d.scoringTeamId === "away").length;
 
-    // Add lacking home goal slots
+    // Add/remove home
     for (let i = 0; i < homeGoals - currentHomeGoalsInDetails; i++) {
-      newDetails.push({ scoringTeamId: "home", playerId: "" });
+       newDetails.push({ scoringTeamId: "home", playerId: "" });
     }
-    // Remove excess home goal slots
-    while (
-      newDetails.filter((d) => d.scoringTeamId === "home").length > homeGoals
-    ) {
-      const idx = newDetails.findLastIndex((d) => d.scoringTeamId === "home");
-      if (idx !== -1) newDetails.splice(idx, 1);
+    while (newDetails.filter((d) => d.scoringTeamId === "home").length > homeGoals) {
+       const idx = newDetails.findLastIndex((d) => d.scoringTeamId === "home");
+       if (idx !== -1) newDetails.splice(idx, 1);
     }
 
-    // Add lacking away goal slots
+    // Add/remove away
     for (let i = 0; i < awayGoals - currentAwayGoalsInDetails; i++) {
-      newDetails.push({ scoringTeamId: "away", playerId: "" });
+       newDetails.push({ scoringTeamId: "away", playerId: "" });
     }
-    // Remove excess away goal slots
-    while (
-      newDetails.filter((d) => d.scoringTeamId === "away").length > awayGoals
-    ) {
-      const idx = newDetails.findLastIndex((d) => d.scoringTeamId === "away");
-      if (idx !== -1) newDetails.splice(idx, 1);
+    while (newDetails.filter((d) => d.scoringTeamId === "away").length > awayGoals) {
+       const idx = newDetails.findLastIndex((d) => d.scoringTeamId === "away");
+       if (idx !== -1) newDetails.splice(idx, 1);
     }
 
-    // Sort details so home is first, then away for better UX
     newDetails.sort((a, b) => (a.scoringTeamId === "home" ? -1 : 1));
     setGoalDetails(newDetails);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [homeGoals, awayGoals]);
 
-  const getPlayersByTeam = (teamName: string) => {
-    const idx = TEAM_NAMES.indexOf(teamName);
-    if (idx === -1) return [];
-    return teamsData[idx] || [];
+  const getPlayersByTeamId = (teamId: string) => {
+    return players.filter(p => p.team_id === teamId);
   };
 
-  const handleAddMatch = (e: React.FormEvent) => {
+  const handleAddMatch = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // -- SECURITY PROMPT --
+    const pin = window.prompt("Masukkan PIN Operator untuk menyimpan skor:");
+    if (pin !== OPERATOR_PIN) {
+        alert("PIN Salah! Anda tidak memiliki izin untuk menambah pertandingan.");
+        return;
+    }
+
     if (!homeTeam || !awayTeam || homeTeam === awayTeam) {
       alert("Pilih tim home dan away dengan benar!");
       return;
     }
 
-    // Basic validation for goal details
     const missingScorer = goalDetails.some((g) => !g.playerId);
     if (missingScorer && (homeGoals > 0 || awayGoals > 0)) {
-      if (
-        !confirm(
-          "Ada gol yang belum ditentukan pencetaknya. Lanjutkan tanpa pencetak gol?",
-        )
-      )
+      if (!confirm("Ada gol yang belum ditentukan pencetaknya. Lanjutkan tanpa pencetak gol?")) {
+         return;
+      }
+    }
+
+    setIsSubmitting(true);
+    try {
+      // 1. Insert Match
+      const { data: matchObj, error: matchErr } = await supabase
+        .from("matches")
+        .insert({
+           home_team_id: homeTeam,
+           away_team_id: awayTeam,
+           home_goals: homeGoals,
+           away_goals: awayGoals
+        })
+        .select("id")
+        .single();
+
+      if (matchErr) throw matchErr;
+      const matchId = matchObj.id;
+
+      // 2. Insert Goals
+      const validGoals = goalDetails.filter(g => g.playerId).map(g => ({
+         match_id: matchId,
+         player_id: g.playerId,
+         team_id: g.scoringTeamId === "home" ? homeTeam : awayTeam
+      }));
+      
+      if (validGoals.length > 0) {
+         const { error: goalErr } = await supabase.from("goals").insert(validGoals);
+         if (goalErr) throw goalErr;
+      }
+
+      // 3. We no longer manually upsert into 'standings' table to avoid complex RLS and desync bugs.
+      // Standings are purely generated dynamically based on matches in the code above.
+
+      // Reset and refresh
+      setHomeTeam("");
+      setAwayTeam("");
+      setHomeGoals(0);
+      setAwayGoals(0);
+      setGoalDetails([]);
+      setIsAddingMatch(false);
+      
+      await fetchData();
+
+    } catch (err: any) {
+       console.error("Submission error:", err);
+       alert("Gagal menyimpan hasil pertandingan: " + err.message);
+    } finally {
+       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteMatch = async (matchId: string) => {
+     // -- SECURITY PROMPT --
+     const pin = window.prompt("Masukkan PIN Operator untuk MENGHAPUS pertandingan:");
+     if (pin !== OPERATOR_PIN) {
+         alert("PIN Salah! Anda tidak memiliki izin untuk menghapus pertandingan.");
+         return;
+     }
+
+     if (!confirm("Yakin ingin menghapus pertandingan ini? Data klasemen dan skor akan dihitung ulang secara otomatis.")) {
         return;
-    }
+     }
 
-    const newMatch: Match = {
-      id: Date.now().toString(),
-      homeTeamName: homeTeam,
-      awayTeamName: awayTeam,
-      homeGoals,
-      awayGoals,
-      goalDetails,
-      timestamp: Date.now(),
-    };
+     setIsLoading(true);
+     try {
+        // Goals are safely foreign-key cascaded or at least isolated. We just delete the match.
+        // For absolute safety, delete goals first if no cascade is setup
+        await supabase.from("goals").delete().eq("match_id", matchId);
+        
+        const { error } = await supabase.from("matches").delete().eq("id", matchId);
+        if (error) throw error;
 
-    setMatches([newMatch, ...matches]);
-
-    // Reset form
-    setIsAddingMatch(false);
-    setHomeTeam("");
-    setAwayTeam("");
-    setHomeGoals(0);
-    setAwayGoals(0);
-    setGoalDetails([]);
+        await fetchData();
+     } catch(err: any) {
+        console.error("Delete error:", err);
+        alert("Gagal menghapus pertandingan: " + err.message);
+     } finally {
+        setIsLoading(false);
+     }
   };
 
-  const handleDeleteMatch = (id: string) => {
-    if (confirm("Hapus pertandingan ini? Statistik akan dihitung ulang.")) {
-      setMatches(matches.filter((m) => m.id !== id));
-    }
-  };
+  const getTeamNameById = (id: string) => teams.find(t => t.id === id)?.name || "Unknown";
 
-  // --- CALCULATIONS ---
+  if (isLoading) {
+    return (
+      <section className="py-24 bg-slate-50 min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-2xl font-bold text-slate-400">Memuat Statistik...</div>
+      </section>
+    );
+  }
 
-  // 1. Calculate Team Standings dynamically
-  const standingsMap = new Map<string, TeamStat>();
-
-  TEAM_NAMES.forEach((name, idx) => {
-    // Generate a consistent logo per team name
-    const seed = name.replace(/\s/g, "");
-    standingsMap.set(name, {
-      name: name,
-      logo:
-        TEAM_LOGOS[name] ||
-        `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=047857`,
-      played: 0,
-      win: 0,
-      draw: 0,
-      lose: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      goalDifference: 0,
-      points: 0,
-    });
-  });
-
-  matches.forEach((m) => {
-    const home = standingsMap.get(m.homeTeamName);
-    const away = standingsMap.get(m.awayTeamName);
-
-    if (home && away) {
-      home.played += 1;
-      home.goalsFor += m.homeGoals;
-      home.goalsAgainst += m.awayGoals;
-
-      away.played += 1;
-      away.goalsFor += m.awayGoals;
-      away.goalsAgainst += m.homeGoals;
-
-      if (m.homeGoals > m.awayGoals) {
-        home.win += 1;
-        home.points += 3;
-        away.lose += 1;
-      } else if (m.homeGoals < m.awayGoals) {
-        away.win += 1;
-        away.points += 3;
-        home.lose += 1;
-      } else {
-        home.draw += 1;
-        home.points += 1;
-        away.draw += 1;
-        away.points += 1;
-      }
-    }
-  });
-
-  const standings = Array.from(standingsMap.values())
-    .map((sw) => {
-      sw.goalDifference = sw.goalsFor - sw.goalsAgainst;
-      return sw;
-    })
-    .sort((a, b) => {
-      if (a.points !== b.points) return b.points - a.points;
-      if (a.goalDifference !== b.goalDifference)
-        return b.goalDifference - a.goalDifference;
-      return b.goalsFor - a.goalsFor;
-    });
-
-  // 2. Calculate Top Scorers dynamically
-  const playerGoalCount: Record<string, number> = {};
-
-  matches.forEach((m) => {
-    m.goalDetails.forEach((g) => {
-      if (g.playerId) {
-        playerGoalCount[g.playerId] = (playerGoalCount[g.playerId] || 0) + 1;
-      }
-    });
-  });
-
-  const topScorers: PlayerStat[] = [];
-  TEAM_NAMES.forEach((teamName, idx) => {
-    const teamPlayers = teamsData[idx] || [];
-    teamPlayers.forEach((p) => {
-      if (playerGoalCount[p.id]) {
-        topScorers.push({
-          id: p.id,
-          name: p.name.replace(/\(GK\)/g, "").trim(),
-          teamName: teamName,
-          goals: playerGoalCount[p.id],
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`,
-          isGoalkeeper: p.categoryId === 1 || p.name.includes("(GK)"),
-        });
-      }
-    });
-  });
-
-  topScorers.sort((a, b) => b.goals - a.goals);
-  const top5Scorers = topScorers.slice(0, 5);
-
-  // 3. Calculate Best Goalkeepers
-  const goalkeepers: PlayerStat[] = [];
-  TEAM_NAMES.forEach((teamName, idx) => {
-    const teamPlayers = teamsData[idx] || [];
-    // Assume categoryId 1 or name contains (GK) is goalkeeper
-    teamPlayers
-      .filter((p) => p.categoryId === 1 || p.name.includes("(GK)"))
-      .forEach((gk) => {
-        const teamStat = standingsMap.get(teamName);
-        if (teamStat && teamStat.played > 0) {
-          // Only rank if team played
-          goalkeepers.push({
-            id: gk.id,
-            name: gk.name.replace(/\(GK\)/g, "").trim(),
-            teamName: teamName,
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${gk.name}`,
-            goals: teamStat.goalsAgainst, // We temporarily use 'goals' to store goals conceded for the GK struct
-            isGoalkeeper: true,
-          });
-        }
-      });
-  });
-
-  // Sort GKs by goals conceded (ascending)
-  goalkeepers.sort((a, b) => a.goals - b.goals);
-  const best3Goalkeepers = goalkeepers.slice(0, 3);
-
-  // Keep Hydration clean
-  if (!isMounted) return <div className="py-24 bg-slate-50 min-h-screen"></div>;
+  if (error) {
+     return (
+       <section className="py-24 bg-slate-50 min-h-screen flex items-center justify-center">
+         <div className="text-red-500 text-center">
+            <h2 className="text-2xl font-bold mb-2">Gagal Memuat Klasemen</h2>
+            <p>{error}</p>
+         </div>
+       </section>
+     )
+  }
 
   return (
     <section className="py-24 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 relative z-10 transition-colors duration-300">
@@ -341,8 +416,7 @@ export default function LigaSelasaStandings() {
             </span>
           </h2>
           <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            Klasemen sementara hasil pertandingan, pencetak gol terbanyak, dan
-            kiper terbaik dinamis.
+            Klasemen resmi, Top Scorer, dan Best GK yang terintegrasi secara Real-Time.
           </p>
         </div>
 
@@ -363,12 +437,12 @@ export default function LigaSelasaStandings() {
               </span>
             </button>
             <button
-              onClick={() => setActiveTab("topscorer")}
-              className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium transition-all duration-200 ${
-                activeTab === "topscorer"
-                  ? "bg-primary text-white shadow-md"
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50"
-              }`}
+               onClick={() => setActiveTab("topscorer")}
+               className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium transition-all duration-200 ${
+                 activeTab === "topscorer"
+                   ? "bg-primary text-white shadow-md"
+                   : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+               }`}
             >
               <Trophy size={18} />
               <span className="whitespace-nowrap text-sm sm:text-base">
@@ -389,12 +463,12 @@ export default function LigaSelasaStandings() {
               </span>
             </button>
             <button
-              onClick={() => setActiveTab("matches")}
-              className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium transition-all duration-200 ${
-                activeTab === "matches"
-                  ? "bg-secondary text-slate-900 shadow-md"
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50"
-              }`}
+               onClick={() => setActiveTab("matches")}
+               className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium transition-all duration-200 ${
+                 activeTab === "matches"
+                   ? "bg-secondary text-slate-900 shadow-md"
+                   : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+               }`}
             >
               <Activity size={18} />
               <span className="whitespace-nowrap text-sm sm:text-base">
@@ -405,131 +479,104 @@ export default function LigaSelasaStandings() {
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden transition-colors duration-300">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden transition-colors duration-300 min-h-[400px]">
+          
           {/* STANDINGS TABLE */}
           {activeTab === "standings" && (
             <div className="overflow-x-auto">
-              {standings.every((s) => s.played === 0) ? (
-                <div className="p-12 text-center text-slate-500">
-                  <p>
-                    Belum ada pertandingan dicatat. Beralih ke tab{" "}
-                    <b>Pertandingan</b> untuk menginput skor.
-                  </p>
-                </div>
-              ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
-                      <th className="p-4 text-center w-16">Pos</th>
-                      <th className="p-4">Klub</th>
-                      <th className="p-4 text-center" title="Main">
-                        M
-                      </th>
-                      <th className="p-4 text-center" title="Menang">
-                        M
-                      </th>
-                      <th className="p-4 text-center" title="Seri">
-                        S
-                      </th>
-                      <th className="p-4 text-center" title="Kalah">
-                        K
-                      </th>
-                      <th
-                        className="p-4 text-center hidden sm:table-cell"
-                        title="Gol Memasukan"
-                      >
-                        GM
-                      </th>
-                      <th
-                        className="p-4 text-center hidden sm:table-cell"
-                        title="Gol Kemasukan"
-                      >
-                        GK
-                      </th>
-                      <th
-                        className="p-4 text-center font-bold"
-                        title="Selisih Gol"
-                      >
-                        SG
-                      </th>
-                      <th className="p-4 text-center font-bold text-primary dark:text-green-400 text-base">
-                        PTS
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {standings.map((team, index) => (
-                      <tr
-                        key={team.name}
-                        className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${
-                          index === 0
-                            ? "bg-green-50/50 dark:bg-green-900/10"
-                            : ""
-                        }`}
-                      >
-                        <td className="p-4 text-center font-bold text-slate-700 dark:text-slate-300">
-                          {index + 1}
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
-                              <Image
-                                src={team.logo}
-                                alt={team.name}
-                                fill
-                                unoptimized
-                                className="object-cover"
-                              />
-                            </div>
-                            <span className="font-semibold text-slate-900 dark:text-white whitespace-nowrap">
-                              {team.name}
-                            </span>
+               {standings.every(s => s.played === 0) ? (
+                 <div className="p-12 text-center text-slate-500">
+                    Belum ada pertandingan dicatat. Beralih ke tab <b>Pertandingan</b> untuk menginput skor.
+                 </div>
+               ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
+                    <th className="p-4 text-center w-16">Pos</th>
+                    <th className="p-4">Klub</th>
+                    <th className="p-4 text-center" title="Main">M</th>
+                    <th className="p-4 text-center" title="Menang">M</th>
+                    <th className="p-4 text-center" title="Seri">S</th>
+                    <th className="p-4 text-center" title="Kalah">K</th>
+                    <th className="p-4 text-center hidden sm:table-cell" title="Gol Memasukan">GM</th>
+                    <th className="p-4 text-center hidden sm:table-cell" title="Gol Kemasukan">GK</th>
+                    <th className="p-4 text-center font-bold" title="Selisih Gol">SG</th>
+                    <th className="p-4 text-center font-bold text-primary dark:text-green-400 text-base">PTS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {standings.map((team, index) => (
+                    <tr
+                      key={team.id}
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${
+                        index === 0
+                          ? "bg-green-50/50 dark:bg-green-900/10"
+                          : ""
+                      }`}
+                    >
+                      <td className="p-4 text-center font-bold text-slate-700 dark:text-slate-300">
+                        {index + 1}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                            <Image
+                              src={team.logo}
+                              alt={team.name}
+                              fill
+                              unoptimized
+                              className="object-cover"
+                            />
                           </div>
-                        </td>
-                        <td className="p-4 text-center text-slate-600 dark:text-slate-400 font-medium">
-                          {team.played}
-                        </td>
-                        <td className="p-4 text-center text-green-600 dark:text-green-400 font-medium">
-                          {team.win}
-                        </td>
-                        <td className="p-4 text-center text-slate-600 dark:text-slate-400 font-medium">
-                          {team.draw}
-                        </td>
-                        <td className="p-4 text-center text-red-600 dark:text-red-400 font-medium">
-                          {team.lose}
-                        </td>
-                        <td className="p-4 text-center text-slate-600 dark:text-slate-400 hidden sm:table-cell">
-                          {team.goalsFor}
-                        </td>
-                        <td className="p-4 text-center text-slate-600 dark:text-slate-400 hidden sm:table-cell">
-                          {team.goalsAgainst}
-                        </td>
-                        <td className="p-4 text-center font-bold text-slate-700 dark:text-slate-300">
-                          {team.goalDifference > 0
-                            ? `+${team.goalDifference}`
-                            : team.goalDifference}
-                        </td>
-                        <td className="p-4 text-center font-bold text-lg text-primary dark:text-green-400">
-                          {team.points}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                          <span className="font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                            {team.name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-center text-slate-600 dark:text-slate-400 font-medium">
+                        {team.played}
+                      </td>
+                      <td className="p-4 text-center text-green-600 dark:text-green-400 font-medium">
+                        {team.win}
+                      </td>
+                      <td className="p-4 text-center text-slate-600 dark:text-slate-400 font-medium">
+                        {team.draw}
+                      </td>
+                      <td className="p-4 text-center text-red-600 dark:text-red-400 font-medium">
+                        {team.lose}
+                      </td>
+                      <td className="p-4 text-center text-slate-600 dark:text-slate-400 hidden sm:table-cell">
+                        {team.goalsFor}
+                      </td>
+                      <td className="p-4 text-center text-slate-600 dark:text-slate-400 hidden sm:table-cell">
+                        {team.goalsAgainst}
+                      </td>
+                      <td className="p-4 text-center font-bold text-slate-700 dark:text-slate-300">
+                        {team.goalDifference > 0
+                          ? `+${team.goalDifference}`
+                          : team.goalDifference}
+                      </td>
+                      <td className="p-4 text-center font-bold text-lg text-primary dark:text-green-400">
+                        {team.points}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+               )}
             </div>
           )}
 
           {/* TOP SCORERS */}
           {activeTab === "topscorer" && (
             <div className="p-6 md:p-8">
-              {top5Scorers.length === 0 ? (
+              {topScorers.length === 0 ? (
                 <div className="text-center text-slate-500 py-8">
-                  Belum ada pemain yang mencetak gol.
+                  Belum ada pemain yang mencetak gol tercatat.
                 </div>
               ) : (
                 <div className="grid gap-4">
-                  {top5Scorers.map((player, index) => (
+                  {topScorers.map((player, index) => (
                     <div
                       key={player.id}
                       className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-primary/30 hover:shadow-md transition-all group"
@@ -584,14 +631,14 @@ export default function LigaSelasaStandings() {
           {/* BEST GOALKEEPERS */}
           {activeTab === "bestgk" && (
             <div className="p-6 md:p-8">
-              {best3Goalkeepers.length === 0 ? (
+              {bestGks.length === 0 ? (
                 <div className="text-center text-slate-500 py-8">
                   Belum ada kiper yang bermain. Pastikan tim sudah melakukan
                   pertandingan.
                 </div>
               ) : (
                 <div className="grid gap-4">
-                  {best3Goalkeepers.map((gk, index) => (
+                  {bestGks.map((gk, index) => (
                     <div
                       key={gk.id}
                       className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-primary/30 hover:shadow-md transition-all group"
@@ -681,14 +728,14 @@ export default function LigaSelasaStandings() {
                         </label>
                         <select
                           required
-                          className="w-full bg-slate-50 border border-slate-300 dark:bg-slate-900 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg p-3 outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          className="w-full bg-slate-50 border border-slate-300 dark:bg-slate-900 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg p-3 outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                           value={homeTeam}
                           onChange={(e) => setHomeTeam(e.target.value)}
                         >
                           <option value="">Pilih Tim</option>
-                          {TEAM_NAMES.map((t) => (
-                            <option key={t} value={t} disabled={t === awayTeam}>
-                              {t}
+                          {teams.map((t) => (
+                            <option key={t.id} value={t.id} disabled={t.id === awayTeam}>
+                              {t.name}
                             </option>
                           ))}
                         </select>
@@ -702,14 +749,14 @@ export default function LigaSelasaStandings() {
                         </label>
                         <select
                           required
-                          className="w-full bg-slate-50 border border-slate-300 dark:bg-slate-900 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg p-3 outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          className="w-full bg-slate-50 border border-slate-300 dark:bg-slate-900 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg p-3 outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                           value={awayTeam}
                           onChange={(e) => setAwayTeam(e.target.value)}
                         >
                           <option value="">Pilih Tim</option>
-                          {TEAM_NAMES.map((t) => (
-                            <option key={t} value={t} disabled={t === homeTeam}>
-                              {t}
+                          {teams.map((t) => (
+                            <option key={t.id} value={t.id} disabled={t.id === homeTeam}>
+                              {t.name}
                             </option>
                           ))}
                         </select>
@@ -721,7 +768,7 @@ export default function LigaSelasaStandings() {
                       <div className="grid grid-cols-2 gap-4 sm:gap-8 py-6 border-t border-slate-100 dark:border-slate-700 mt-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 sm:p-6 border">
                         <div className="text-center flex flex-col items-center">
                           <label className="block font-bold text-emerald-700 dark:text-emerald-400 mb-3 text-sm sm:text-base">
-                            {homeTeam}
+                            {getTeamNameById(homeTeam)}
                           </label>
                           <input
                             type="number"
@@ -737,7 +784,7 @@ export default function LigaSelasaStandings() {
                         </div>
                         <div className="text-center flex flex-col items-center border-l-2 border-slate-200 dark:border-slate-700 border-dashed pl-4 sm:pl-8">
                           <label className="block font-bold text-indigo-700 dark:text-indigo-400 mb-3 text-sm sm:text-base">
-                            {awayTeam}
+                            {getTeamNameById(awayTeam)}
                           </label>
                           <input
                             type="number"
@@ -764,26 +811,26 @@ export default function LigaSelasaStandings() {
                           {goalDetails.map((detail, idx) => {
                             const isHome = detail.scoringTeamId === "home";
                             const availablePlayers = isHome
-                              ? getPlayersByTeam(homeTeam)
-                              : getPlayersByTeam(awayTeam);
-                            const teamL = isHome ? homeTeam : awayTeam;
+                              ? getPlayersByTeamId(homeTeam)
+                              : getPlayersByTeamId(awayTeam);
+                            const teamName = isHome ? getTeamNameById(homeTeam) : getTeamNameById(awayTeam);
 
                             return (
                               <div
                                 key={idx}
                                 className="flex items-center gap-3 bg-white dark:bg-slate-800 p-2 sm:p-3 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm"
                               >
-                                <span
-                                  className={`text-xs font-bold w-16 px-2 py-1.5 rounded text-center whitespace-nowrap ${
-                                    isHome
-                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
-                                      : "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300"
-                                  }`}
-                                >
-                                  Skor {isHome ? "Home" : "Away"}
-                                </span>
+                                {isHome ? (
+                                  <span className="text-xs font-bold w-16 px-2 py-1.5 rounded text-center whitespace-nowrap bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                    Skor Home
+                                  </span>
+                                ) : (
+                                  <span className="text-xs font-bold w-16 px-2 py-1.5 rounded text-center whitespace-nowrap bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300">
+                                    Skor Away
+                                  </span>
+                                )}
                                 <select
-                                  className="flex-1 bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-sm rounded-md outline-none p-2.5 focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                  className="flex-1 bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-sm rounded-md outline-none p-2.5 focus:ring-2 focus:ring-primary focus:border-transparent transition-all cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
                                   value={detail.playerId}
                                   onChange={(e) => {
                                     const newDetails = [...goalDetails];
@@ -792,9 +839,7 @@ export default function LigaSelasaStandings() {
                                   }}
                                 >
                                   <option value="">
-                                    {availablePlayers.length > 0
-                                      ? `(Pilih Pemain ${teamL})`
-                                      : `(Kosong - Spin Dulu di HP ini)`}
+                                    (Pilih Pemain {teamName})
                                   </option>
                                   {availablePlayers.map((p) => (
                                     <option key={p.id} value={p.id}>
@@ -807,8 +852,7 @@ export default function LigaSelasaStandings() {
                           })}
                         </div>
                         <p className="text-xs text-slate-500 mt-3 italic">
-                          * Kosongkan jika tim {homeTeam} / {awayTeam} belum
-                          dibuat di draft atas / bunuh diri
+                          * Kosongkan jika bunuh diri/pemain tidak terdaftar
                         </p>
                       </div>
                     )}
@@ -816,9 +860,10 @@ export default function LigaSelasaStandings() {
                     <div className="flex justify-end pt-4">
                       <button
                         type="submit"
-                        className="bg-secondary text-slate-900 font-bold px-6 py-3 rounded-xl hover:bg-[#eacc00] transition-colors w-full sm:w-auto shadow-md"
+                        disabled={isSubmitting}
+                        className="bg-secondary text-slate-900 font-bold px-6 py-3 rounded-xl hover:bg-[#eacc00] transition-colors w-full sm:w-auto shadow-md disabled:opacity-50 cursor-pointer"
                       >
-                        Simpan Pertandingan
+                        {isSubmitting ? "Menyimpan..." : "Simpan Pertandingan"}
                       </button>
                     </div>
                   </form>
@@ -830,7 +875,7 @@ export default function LigaSelasaStandings() {
                 {matches.length === 0 ? (
                   <div className="text-center text-slate-400 py-10 bg-white border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-2xl border-dashed">
                     <Activity size={32} className="mx-auto mb-3 opacity-30" />
-                    Belum ada hasil pertandingan. <br />
+                    Belum ada hasil pertandingan tersimpan. <br />
                     Klik Tambah Hasil untuk memasukkan data.
                   </div>
                 ) : (
@@ -852,8 +897,9 @@ export default function LigaSelasaStandings() {
                       </div>
 
                       {/* VS Badge */}
-                      <div className="bg-slate-100 dark:bg-slate-700 text-slate-500 font-bold px-2 py-1 rounded-md text-[10px] sm:text-xs tracking-widest uppercase flex-shrink-0 mt-3 sm:mt-0">
+                      <div className="bg-slate-100 dark:bg-slate-700 text-slate-500 font-bold px-2 py-1 rounded-md text-[10px] sm:text-xs tracking-widest uppercase flex-shrink-0 mt-3 sm:mt-0 flex flex-col items-center">
                         VS
+                        <span className="text-[8px] font-normal leading-none mt-1">{new Date(m.timestamp).toLocaleDateString('id-ID')}</span>
                       </div>
 
                       {/* Away Team */}
@@ -868,13 +914,17 @@ export default function LigaSelasaStandings() {
                         </span>
                       </div>
 
-                      <button
-                        onClick={() => handleDeleteMatch(m.id)}
-                        className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all absolute right-4 sm:relative sm:right-0"
-                        title="Hapus pertandingan"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      {/* Delete Button (Hover Reveal) */}
+                      <div className="absolute top-2 right-2 sm:top-1/2 sm:-translate-y-1/2 sm:right-4 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                         <button
+                           onClick={() => handleDeleteMatch(m.id)}
+                           className="bg-red-100 text-red-600 hover:bg-red-600 hover:text-white p-2 text-xs rounded-lg transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
+                           title="Hapus Pertandingan"
+                         >
+                            <Trash2 size={14} />
+                            <span className="hidden sm:inline font-medium">Hapus</span>
+                         </button>
+                      </div>
                     </div>
                   ))
                 )}
